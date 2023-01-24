@@ -57,8 +57,8 @@ jobs:
           command: |
             echo "Docker ID and Image: $DOCKER_IMAGE_NAME"
             docker login -u="$DOCKERHUB_USERNAME" -p="$DOCKERHUB_PASSWORD"
-            docker tag $DOCKER_IMAGE_NAME $DOCKERHUB_USERNAME/$DOCKER_IMAGE_NAME:$CIRCLE_WORKFLOW_ID
-            docker push $DOCKERHUB_USERNAME/$DOCKER_IMAGE_NAME:$CIRCLE_WORKFLOW_ID
+            docker tag $DOCKER_IMAGE_NAME $DOCKERHUB_USERNAME/$DOCKER_IMAGE_NAME:319523281765
+            docker push $DOCKERHUB_USERNAME/$DOCKER_IMAGE_NAME:319523281765
 
   deploy-infrastructure:
     docker:
@@ -107,32 +107,28 @@ jobs:
               --stack-name "${ENVIRONMENT_NAME}-eks-management" \
               --region ${AWS_DEFAULT_REGION} \
               --parameter-overrides file://cloudformation/management-parameters.json \
-              --output text >> ~/checkIfDeployed.txt
-            cat ~/checkIfDeployed.txt
+              --output text >> ~/project/ansible/checkIfDeployed.txt
+            cat ~/project/ansible/checkIfDeployed.txt
       - run:
           name: Extract the IPs of the management instances for Ansible
           command: |
-            echo [management] > ~/inventory.txt
-            aws ec2 describe-instances \
-              --region "${AWS_DEFAULT_REGION}" \
-              --query 'Reservations[*].Instances[*].PublicIpAddress' \
-              --filters "Name=tag:Name,Values=${ENVIRONMENT_NAME}-management*" \
-              --output text >> ~/inventory.txt
-            cat ~/inventory.txt
+            echo [management] > ~/project/ansible/inventory.txt
+            aws ec2 describe-instances --query 'Reservations[*].Instances[*].PublicIpAddress' --filters Name=tag:Name,Values=capstone-project-management* --output text >> ~/project/ansible/inventory.txt
+            cat ~/project/ansible/inventory.txt
       - persist_to_workspace:
           root: ~/
           paths:
-            - inventory.txt
-            - checkIfDeployed.txt
+            - project/ansible/inventory.txt
+            - project/ansible/checkIfDeployed.txt
 
   configure-infrastructure:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: python:3.7-alpine3.17
     steps:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "68:d9:10:b1:cf:08:55:d4:00:e6:16:6e:bd:4b:1f:32"
+            - "a3:83:19:0c:ff:be:6c:66:7b:9f:c4:3e:e2:d1:2e:08"
       - attach_workspace:
           at: ~/
       - run:
@@ -142,24 +138,26 @@ jobs:
       - run:
           name: Configure server
           command: |
-            if grep -q "No changes to deploy" ~/checkIfDeployed.txt
-              then
-                cat ~/inventory.txt
+            if grep -q "No changes to deploy" ~/project/ansible/checkIfDeployed.txt
+            then
+                echo "here if"
+                cat ~/project/ansible/inventory.txt
                 echo "Our management instances are already configured."
-              else
-                cat ~/inventory.txt
+            else
+                echo "here else"
+                cat ~/project/ansible/inventory.txt
                 cd ansible
-                ansible-playbook -i ~/inventory.txt configure-server.yml
-              fi
+                ansible-playbook -i inventory.txt configure-server.yml
+            fi
 
   configure-cluster:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: python:3.7-alpine3.17
     steps:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "68:d9:10:b1:cf:08:55:d4:00:e6:16:6e:bd:4b:1f:32"
+            - "a3:83:19:0c:ff:be:6c:66:7b:9f:c4:3e:e2:d1:2e:08"
       - attach_workspace:
           at: ~/
       - run:
@@ -169,33 +167,34 @@ jobs:
       - run:
           name: Configure server
           command: |
-            if grep -q "No changes to deploy" ~/checkIfDeployed.txt
-              then
-                cat ~/inventory.txt
+            if grep -q "No changes to deploy" ~/project/ansible/checkIfDeployed.txt
+            then
+                cat ~/project/ansible/inventory.txt
                 echo "Our management instances are already configured."
-              else
-                cat ~/inventory.txt
+            else
+                cat ~/project/ansible/inventory.txt
                 cd ansible
-                ansible-playbook -i ~/inventory.txt configure-cluster.yml
-              fi
+                ansible-playbook -i inventory.txt configure-cluster.yml
+            fi
       - run:
           name: Wait for LoadBalancer's domain to become reachable
           command: |
-            if grep -q "No changes to deploy" ~/checkIfDeployed.txt
-              then
-                cat ~/inventory.txt
+            if grep -q "No changes to deploy" ~/project/ansible/checkIfDeployed.txt
+            then
+                cat ~/project/ansible/inventory.txt
                 echo "Our management instances are already configured."
-              else
-                cat ~/inventory.txt
+            else
+                cat ~/project/ansible/inventory.txt
                 echo "Wait 60 seconds..."
                 sleep 60
-              fi
+            fi
       - run:
           name: Display the LoadBalancer's DNS name
           command: |
-            cat ~/inventory.txt
+            cat ~/project/ansible/inventory.txt
             cd ansible
-            ansible-playbook -i ~/inventory.txt save-elb-dns.yml
+            ansible-playbook -i inventory.txt save-elb-dns.yml
+            touch ~/elb_dns.txt
             cat ~/elb_dns.txt
       - persist_to_workspace:
           root: ~/
@@ -204,12 +203,12 @@ jobs:
 
   deploy-docker:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: python:3.7-alpine3.17
     steps:
       - checkout
       - add_ssh_keys:
           fingerprints:
-            - "68:d9:10:b1:cf:08:55:d4:00:e6:16:6e:bd:4b:1f:32"
+            - "a3:83:19:0c:ff:be:6c:66:7b:9f:c4:3e:e2:d1:2e:08"
       - attach_workspace:
           at: ~/
       - run:
@@ -217,11 +216,11 @@ jobs:
           command: |
             apk add --update ansible
       - run:
-          name: Deploy newest Docker Image
+          name: Deploy Docker Image
           command: |
-            cat ~/inventory.txt
+            cat ~/project/ansible/inventory.txt
             cd ansible
-            ansible-playbook -i ~/inventory.txt deploy-app.yml
+            ansible-playbook -i inventory.txt deploy-app.yml
           no_output_timeout: 2m
 
 workflows:
@@ -233,11 +232,11 @@ workflows:
             - test-build
           filters:
             branches:
-              only: [ main ]
+              only: [main]
       - deploy-infrastructure:
           filters:
             branches:
-              only: [ main ]
+              only: [main]
       - configure-infrastructure:
           requires:
             - deploy-infrastructure

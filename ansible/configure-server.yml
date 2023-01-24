@@ -30,7 +30,7 @@
     - name: Set the aws_secret_access_key
       shell: "aws configure set aws_secret_access_key {{ AWS_SECRET_ACCESS_KEY }}"
     - name: Set the default.region
-      shell: "aws configure set default.region {{ AWS_DEFAULT_REGION }}"
+      shell: "aws configure set default.region us-east-1"
 
 - name: "Fetch kubectl config"
   hosts: management
@@ -42,4 +42,4 @@
     ENVIRONMENT_NAME: "{{ lookup('env', 'ENVIRONMENT_NAME') }}"
   pre_tasks:
     - name: Create a kubeconfig file for the cluster
-      shell: "aws eks update-kubeconfig --region {{ AWS_DEFAULT_REGION }} --name {{ ENVIRONMENT_NAME }}-cluster"
+      shell: "aws eks update-kubeconfig --region us-east-1 --name capstone-project-cluster"
