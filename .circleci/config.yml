@@ -232,11 +232,11 @@ workflows:
             - test-build
           filters:
             branches:
-              only: [main]
+              only: [dev]
       - deploy-infrastructure:
           filters:
             branches:
-              only: [main]
+              only: [dev]
       - configure-infrastructure:
           requires:
             - deploy-infrastructure
